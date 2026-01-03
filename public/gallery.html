@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MemoryBridge Application Gallery</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px;
+            background: #f5f5f5;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 2.5em;
+        }
+        .view-container {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 60px;
+            page-break-after: always;
+        }
+        .view-container:last-child {
+            page-break-after: auto;
+        }
+        h2 {
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            margin-top: 0;
+            color: #2563eb;
+        }
+        img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            border: 1px solid #eee;
+            margin-top: 15px;
+        }
+        .print-instruction {
+            text-align: center;
+            background: #dbeafe;
+            color: #1e40af;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 40px;
+        }
+        @media print {
+            body { 
+                background: white; 
+                padding: 0;
+            }
+            .view-container {
+                box-shadow: none;
+                margin-bottom: 0;
+                border-radius: 0;
+            }
+            .print-instruction {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="print-instruction">
+        <strong>How to save as PDF:</strong> Press <code>Cmd + P</code> (Mac) or <code>Ctrl + P</code> (Windows) and select "Save as PDF" as the destination.
+    </div>
+
+    <h1>MemoryBridge Caretaker Assistant<br><span style="font-size: 0.6em; color: #666; font-weight: normal;">Application View Gallery</span></h1>
+
+    <div class="view-container">
+        <h2>1. Clinical Monitor (Dashboard)</h2>
+        <p>Overview of patient status, telemetry, and daily compliance timeline.</p>
+        <img src="/screenshots/dashboard_view_1767407351448.png" alt="Dashboard">
+    </div>
+
+    <div class="view-container">
+        <h2>2. Care Protocol (Routine)</h2>
+        <p>Interactive timeline of daily care tasks, showing completion status and upcoming events.</p>
+        <img src="/screenshots/routine_view_1767407366146.png" alt="Routine">
+    </div>
+
+    <div class="view-container">
+        <h2>3. Intelligence Core (AI Insights)</h2>
+        <p>AI-powered diagnostic aid providing care recommendations and anomaly detection.</p>
+        <img src="/screenshots/ai_insights_view_1767407377764.png" alt="AI Insights">
+    </div>
+
+    <div class="view-container">
+        <h2>4. Neural Protocol Suite (Activities)</h2>
+        <p>Catalog of cognitive stimulation activities and therapeutic exercises.</p>
+        <img src="/screenshots/activities_view_1767407390030.png" alt="Activities">
+    </div>
+
+    <div class="view-container">
+        <h2>5. Clinical Registration (Patient Bio)</h2>
+        <p>Comprehensive patient demographics, condition details, and biographical information.</p>
+        <img src="/screenshots/patient_bio_view_1767407404457.png" alt="Patient Bio">
+    </div>
+
+    <div class="view-container">
+        <h2>6. Pharmacy Hub (Medication Control)</h2>
+        <p>Detailed medication schedule tracking, adherence monitoring, and refill management.</p>
+        <img src="/screenshots/medication_control_view_1767407418385.png" alt="Pharmacy">
+    </div>
+
+    <div class="view-container">
+        <h2>7. Medical Records</h2>
+        <p>Clinical history, visit logs, and medical documentation interface.</p>
+        <img src="/screenshots/medical_records_view_1767407433114.png" alt="Medical Records">
+    </div>
+
+    <div class="view-container">
+        <h2>8. Crisis HUD (Emergency)</h2>
+        <p>High-contrast emergency dashboard for rapid response and critical information access.</p>
+        <img src="/screenshots/emergency_hud_view_1767407448646.png" alt="Emergency HUD">
+    </div>
+
+</body>
+</html>
