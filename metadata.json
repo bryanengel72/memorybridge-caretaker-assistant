@@ -1,0 +1,7 @@
+{
+  "name": "MemoryBridge Caretaker Assistant",
+  "description": "A clinical-grade companion for Alzheimer's and Dementia caregivers. Features medication adherence tracking, doctor visit logs, and context-aware AI insights to support personalized care.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
