@@ -2,6 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { Task, Activity, MoodEntry, DoctorVisit, Medication, PatientInfo } from './types';
 import { generateDailyStimulation } from './services/geminiService';
+import {
+  getTasks, updateTaskStatus,
+  getMedications, updateMedicationStatus as updateMedStatusDB, addMedication as addMedDB,
+  getPatientInfo, updatePatientInfo,
+  getVisits, addVisit as addVisitDB,
+  getMoodData
+} from './services/dataService';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import RoutineView from './components/RoutineView';
@@ -58,14 +65,46 @@ const MOOD_DATA: MoodEntry[] = [
 
 const App: React.FC = () => {
   const [view, setView] = useState<'dashboard' | 'routine' | 'ai' | 'activities' | 'records' | 'meds' | 'emergency' | 'profile'>('dashboard');
-  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
-  const [medications, setMedications] = useState<Medication[]>(INITIAL_MEDICATIONS);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [medications, setMedications] = useState<Medication[]>([]);
   const [patientInfo, setPatientInfo] = useState<PatientInfo>(INITIAL_PATIENT);
   const [activities, setActivities] = useState<Activity[]>([]);
-  const [visits, setVisits] = useState<DoctorVisit[]>(INITIAL_VISITS);
+  const [visits, setVisits] = useState<DoctorVisit[]>([]);
   const [isLoadingActivities, setIsLoadingActivities] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [dayStatus, setDayStatus] = useState<'stable' | 'elevated'>('stable');
+  const [moodData, setMoodData] = useState<MoodEntry[]>(MOOD_DATA);
+
+  // Initial Data Load
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [fetchedTasks, fetchedMeds, fetchedVisits, fetchedPatient, fetchedMood] = await Promise.all([
+          getTasks(),
+          getMedications(),
+          getVisits(),
+          getPatientInfo(),
+          getMoodData()
+        ]);
+
+        if (fetchedTasks.length > 0) setTasks(fetchedTasks);
+        else setTasks(INITIAL_TASKS); // Fallback to initial if empty db
+
+        if (fetchedMeds.length > 0) setMedications(fetchedMeds);
+        else setMedications(INITIAL_MEDICATIONS);
+
+        if (fetchedVisits.length > 0) setVisits(fetchedVisits);
+
+        if (fetchedPatient) setPatientInfo(fetchedPatient);
+
+        if (fetchedMood.length > 0) setMoodData(fetchedMood);
+      } catch (error) {
+        console.error("Failed to load data", error);
+        // Fallback to defaults currently in state
+      }
+    };
+    loadData();
+  }, []);
 
   useEffect(() => {
     const fetchActivities = async () => {
@@ -77,23 +116,58 @@ const App: React.FC = () => {
     fetchActivities();
   }, []);
 
-  const toggleTask = (id: string) => {
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, isCompleted: !t.isCompleted } : t));
+  const toggleTask = async (id: string) => {
+    const task = tasks.find(t => t.id === id);
+    if (task) {
+      const newStatus = !task.isCompleted;
+      // Optimistic update
+      setTasks(prev => prev.map(t => t.id === id ? { ...t, isCompleted: newStatus } : t));
+      try {
+        await updateTaskStatus(id, newStatus);
+      } catch (e) {
+        // Revert on error
+        console.error("Failed to update task", e);
+        setTasks(prev => prev.map(t => t.id === id ? { ...t, isCompleted: !newStatus } : t));
+      }
+    }
   };
 
-  const updateMedicationStatus = (id: string, status: 'taken' | 'pending' | 'missed') => {
+  const updateMedicationStatus = async (id: string, status: 'taken' | 'pending' | 'missed') => {
+    // Optimistic
     setMedications(prev => prev.map(m => m.id === id ? { ...m, status } : m));
+    try {
+      await updateMedStatusDB(id, status);
+    } catch (e) {
+      console.error("Failed to update med status", e);
+    }
   };
 
-  const addMedication = (med: Omit<Medication, 'id'>) => {
-    const newMed = { ...med, id: Date.now().toString() };
-    setMedications(prev => [...prev, newMed]);
+  const addMedication = async (med: Omit<Medication, 'id'>) => {
+    try {
+      const newMed = await addMedDB(med);
+      setMedications(prev => [...prev, newMed]);
+    } catch (e) {
+      console.error("Failed to add medication", e);
+    }
   };
 
-  const addVisit = (visit: Omit<DoctorVisit, 'id'>) => {
-    const newVisit = { ...visit, id: Date.now().toString() };
-    setVisits(prev => [newVisit, ...prev]);
+  const addVisit = async (visit: Omit<DoctorVisit, 'id'>) => {
+    try {
+      const newVisit = await addVisitDB(visit);
+      setVisits(prev => [newVisit, ...prev]);
+    } catch (e) {
+      console.error("Failed to add visit", e);
+    }
   };
+
+  const handleUpdatePatient = async (newInfo: PatientInfo) => {
+    setPatientInfo(newInfo);
+    try {
+      await updatePatientInfo(newInfo);
+    } catch (e) {
+      console.error("Failed to update patient info", e);
+    }
+  }
 
   const handleSetView = (newView: typeof view) => {
     setView(newView);
@@ -114,15 +188,15 @@ const App: React.FC = () => {
         <div className="fixed inset-0 bg-slate-900/10 backdrop-blur-sm z-40 lg:hidden" onClick={() => setIsSidebarOpen(false)} />
       )}
 
-      <Sidebar 
-        currentView={view} 
-        setView={handleSetView} 
-        isOpen={isSidebarOpen} 
-        onClose={() => setIsSidebarOpen(false)} 
+      <Sidebar
+        currentView={view}
+        setView={handleSetView}
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
         dayStatus={dayStatus}
         missedMedsCount={missedCount}
       />
-      
+
       <main className={`flex-1 relative z-10 transition-all duration-500 lg:ml-72 pb-32 lg:pb-12 ${view === 'emergency' ? 'bg-rose-50/30' : ''}`}>
         <header className="sticky top-0 z-30 bg-white/70 backdrop-blur-xl border-b border-slate-200/60 px-4 py-3 lg:px-12 lg:py-6 flex items-center justify-between">
           <div className="flex items-center gap-3 md:gap-4">
@@ -133,10 +207,10 @@ const App: React.FC = () => {
               <p className="hidden xs:block text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mono">Institutional Console</p>
               <h2 className="text-lg lg:text-xl font-bold text-slate-800 flex items-center gap-2 lg:gap-3">
                 <span className="truncate max-w-[120px] sm:max-w-none">
-                  {view === 'records' ? 'Medical Records' : 
-                   view === 'meds' ? 'Pharmacy' : 
-                   view === 'emergency' ? 'Crisis HUD' : 
-                   view === 'profile' ? 'Patient Profile' : 'Monitor'}
+                  {view === 'records' ? 'Medical Records' :
+                    view === 'meds' ? 'Pharmacy' :
+                      view === 'emergency' ? 'Crisis HUD' :
+                        view === 'profile' ? 'Patient Profile' : 'Monitor'}
                 </span>
                 <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-black mono tracking-widest ${dayStatus === 'elevated' || missedCount > 0 || view === 'emergency' ? 'bg-rose-100 text-rose-600 animate-pulse' : 'bg-blue-100 text-blue-600'}`}>
                   {view === 'emergency' ? 'CRITICAL' : missedCount > 0 ? 'ALERT' : dayStatus === 'elevated' ? 'OBSERVE' : 'BASELINE'}
@@ -146,11 +220,10 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <button 
+            <button
               onClick={() => handleSetView('emergency')}
-              className={`flex items-center gap-2 px-3 py-1.5 lg:px-4 lg:py-2 rounded-xl shadow-sm border transition-all ${
-                view === 'emergency' ? 'bg-rose-600 text-white border-rose-700' : 'bg-white border-slate-200 text-slate-700'
-              }`}
+              className={`flex items-center gap-2 px-3 py-1.5 lg:px-4 lg:py-2 rounded-xl shadow-sm border transition-all ${view === 'emergency' ? 'bg-rose-600 text-white border-rose-700' : 'bg-white border-slate-200 text-slate-700'
+                }`}
             >
               <i className="fas fa-biohazard text-[10px] lg:text-xs"></i>
               <span className="text-[10px] font-black mono uppercase tracking-widest hidden sm:block">Emergency</span>
@@ -160,14 +233,14 @@ const App: React.FC = () => {
 
         <div className="px-4 lg:px-12 py-6 lg:py-8">
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-700">
-            {view === 'dashboard' && <Dashboard tasks={tasks} moodData={MOOD_DATA} activities={activities} dayStatus={dayStatus} setDayStatus={setDayStatus} visits={visits} medications={medications} />}
+            {view === 'dashboard' && <Dashboard tasks={tasks} moodData={moodData} activities={activities} dayStatus={dayStatus} setDayStatus={setDayStatus} visits={visits} medications={medications} />}
             {view === 'routine' && <RoutineView tasks={tasks} toggleTask={toggleTask} />}
             {view === 'ai' && <AIInsights visits={visits} tasks={tasks} medications={medications} patientInfo={patientInfo} />}
             {view === 'activities' && <ActivitiesView activities={activities} isLoading={isLoadingActivities} />}
             {view === 'records' && <ClinicalRecordsView visits={visits} onAddVisit={addVisit} />}
             {view === 'meds' && <MedicationsView medications={medications} onUpdateStatus={updateMedicationStatus} onAddMedication={addMedication} />}
             {view === 'emergency' && <EmergencyHUD medications={medications} visits={visits} patientInfo={patientInfo} />}
-            {view === 'profile' && <PatientProfileView patientInfo={patientInfo} setPatientInfo={setPatientInfo} />}
+            {view === 'profile' && <PatientProfileView patientInfo={patientInfo} setPatientInfo={handleUpdatePatient} />}
           </div>
         </div>
 
@@ -183,9 +256,8 @@ const App: React.FC = () => {
               <button
                 key={nav.id}
                 onClick={() => handleSetView(nav.id as any)}
-                className={`flex-1 flex flex-col items-center gap-1 py-2.5 transition-all duration-300 relative rounded-2xl ${
-                  view === nav.id ? (nav.id === 'emergency' ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600') : 'text-slate-400 hover:text-slate-600 active:scale-95'
-                }`}
+                className={`flex-1 flex flex-col items-center gap-1 py-2.5 transition-all duration-300 relative rounded-2xl ${view === nav.id ? (nav.id === 'emergency' ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600') : 'text-slate-400 hover:text-slate-600 active:scale-95'
+                  }`}
               >
                 <i className={`fas ${nav.icon} text-base`}></i>
                 {(nav.id === 'meds' && missedCount > 0) && (
